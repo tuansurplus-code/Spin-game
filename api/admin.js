@@ -33,10 +33,16 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const body = req.body || {};
+      // Safely parse body if sent as string or object
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (e) { body = {}; }
+      }
+      body = body || {};
+
       let { action, table, data, id, form_fields, gifts, settings } = body;
 
-      // Automatically map incoming frontend payload structures if 'table' is omitted
+      // Auto-map frontend request payload structures
       if (!table) {
         if (action === 'save_fields' || form_fields) {
           table = 'form_fields';
@@ -54,7 +60,11 @@ module.exports = async function handler(req, res) {
       }
 
       if (!table) {
-        return res.status(400).json({ success: false, error: 'Target table not specified in request payload.' });
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Target table not specified.', 
+          receivedBody: body 
+        });
       }
 
       let result;
