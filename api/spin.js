@@ -1,47 +1,49 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    const { data: gifts, error } = await supabase
-      .from('gifts')
-      .select('*')
-      .eq('active', true)
-      .gt('stock', 0);
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (error) throw error;
-    if (!gifts || gifts.length === 0) {
-      return res.status(400).json({ error: 'No available items in stock' });
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/gifts?select=*&active=eq.true&stock=gt.0`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const items = await response.json();
+
+    if (!response.ok || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: 'No active prizes available.' });
     }
 
-    const totalWeight = gifts.reduce((sum, item) => sum + item.weight, 0);
+    const totalWeight = items.reduce((acc, item) => acc + (Number(item.probability ?? item.weight) || 1), 0);
     let randomNum = Math.random() * totalWeight;
-    let winningItem = gifts[0];
+    let winningIndex = 0;
 
-    for (const item of gifts) {
-      if (randomNum < item.weight) {
-        winningItem = item;
+    for (let i = 0; i < items.length; i++) {
+      const weight = Number(items[i].probability ?? items[i].weight) || 1;
+      if (randomNum < weight) {
+        winningIndex = i;
         break;
       }
-      randomNum -= item.weight;
+      randomNum -= weight;
     }
-
-    const winningIndex = gifts.findIndex(g => g.id === winningItem.id);
 
     return res.status(200).json({
       success: true,
       winningIndex,
-      winningItem
+      winningItem: items[winningIndex]
     });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
-}
+};
