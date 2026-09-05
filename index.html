@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel + Supabase App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Vercel & Supabase App</h1>
+        <p>Manage data seamlessly with your connected database.</p>
+        
+        <div class="form-section">
+            <input type="text" id="item-input" placeholder="Enter a new item..." />
+            <button id="add-btn">Add to Database</button>
+        </div>
+
+        <div class="list-section">
+            <h3>Database Items:</h3>
+            <ul id="items-list">
+                <li>Loading items...</li>
+            </ul>
+        </div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
