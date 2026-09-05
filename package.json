@@ -8,6 +8,7 @@
     "build": "echo 'No build step required for static frontend and serverless functions'"
   },
   "dependencies": {
+    
     "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
