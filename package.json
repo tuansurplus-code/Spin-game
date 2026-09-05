@@ -1,0 +1,19 @@
+{
+  "name": "spin-win-app",
+  "version": "1.0.0",
+  "description": "Spin and win application with Supabase backend and Vercel serverless functions",
+  "main": "script.js",
+  "scripts": {
+    "start": "vercel dev",
+    "build": "echo 'No build step required for static frontend and serverless functions'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
