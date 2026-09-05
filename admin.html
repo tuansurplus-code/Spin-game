@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Spin & Win</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
+    input, select, textarea { color: #0f172a !important; background-color: #f1f5f9 !important; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <div id="authModal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm text-center space-y-4">
+      <div class="text-4xl">🔒</div>
+      <h2 class="text-2xl font-bold text-white">Admin Access</h2>
+      <p class="text-slate-400 text-sm">Please enter the admin password to continue.</p>
+      
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <input type="password" id="adminPasswordInput" placeholder="Enter Password" required
+          class="w-full px-4 py-2 text-slate-900 font-bold bg-slate-100 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-bold text-white rounded-xl shadow-lg transition">
+          Login to Dashboard
+        </button>
+      </form>
+      <p id="authErrorMsg" class="text-red-400 text-xs font-semibold hidden">Invalid password. Please try again.</p>
+    </div>
+  </div>
+
+  <div id="adminMainContent" class="hidden flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700 pb-4 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-indigo-400">Admin Panel</h1>
+        <p class="text-slate-400 text-sm">Spin & Win Management Console</p>
+      </div>
+
+      <nav class="flex bg-slate-800 p-1.5 rounded-xl border border-slate-700 space-x-1">
+        <button id="tabBtn-dashboard" onclick="switchTab('dashboard')" class="px-4 py-2 font-bold text-sm rounded-lg transition bg-indigo-600 text-white">Dashboard</button>
+        <button id="tabBtn-config" onclick="switchTab('config')" class="px-4 py-2 font-bold text-sm rounded-lg transition text-slate-400 hover:text-white">Wheel Configuration</button>
+        <button id="tabBtn-records" onclick="switchTab('records')" class="px-4 py-2 font-bold text-sm rounded-lg transition text-slate-400 hover:text-white">Winning Record</button>
+      </nav>
+    </header>
+
+    <div id="tabContent-dashboard" class="tab-pane space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+          <p class="text-slate-400 text-xs uppercase font-semibold">Total Wheel Prizes</p>
+          <h3 id="statTotalPrizes" class="text-3xl font-extrabold text-indigo-400 mt-2">0</h3>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+          <p class="text-slate-400 text-xs uppercase font-semibold">Total Claims Recorded</p>
+          <h3 id="statTotalClaims" class="text-3xl font-extrabold text-emerald-400 mt-2">0</h3>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+          <p class="text-slate-400 text-xs uppercase font-semibold">Spins Allowed / Day</p>
+          <h3 id="statSpinsPerDay" class="text-3xl font-extrabold text-amber-400 mt-2">1</h3>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabContent-config" class="tab-pane hidden space-y-8">
+      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+          <h2 class="text-xl font-bold text-white">Wheel Segment Prizes</h2>
+          <button onclick="addPrizeRow()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white rounded-lg transition">+ Add New Prize</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-700 text-slate-200 uppercase text-xs">
+              <tr>
+                <th class="p-3">Prize Name</th>
+                <th class="p-3">Weight</th>
+                <th class="p-3">Stock</th>
+                <th class="p-3">Color</th>
+                <th class="p-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="prizesTableBody" class="divide-y divide-slate-700"></tbody>
+          </table>
+        </div>
+        <div class="pt-2 text-right">
+          <button onclick="savePrizes()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white rounded-xl shadow-lg transition">Save Prizes</button>
+        </div>
+      </section>
+
+      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+          <h2 class="text-xl font-bold text-white">Claim Form Input Fields</h2>
+          <button onclick="addFormFieldRow()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white rounded-lg transition">+ Add New Field</button>
+        </div>
+        <div id="formFieldsContainer" class="space-y-3"></div>
+        <div class="pt-2 text-right">
+          <button onclick="saveFormFields()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white rounded-xl shadow-lg transition">Save Form Fields</button>
+        </div>
+      </section>
+
+      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 class="text-xl font-bold text-white border-b border-slate-700 pb-2">Wheel Performance Settings</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Spins Allowed Per User / Day</label>
+            <input type="number" id="settingSpinsPerDay" class="w-full px-3 py-2 text-slate-900 font-bold bg-slate-100 rounded-xl border border-slate-300 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Spin Speed (Seconds)</label>
+            <input type="number" id="settingSpinSpeed" class="w-full px-3 py-2 text-slate-900 font-bold bg-slate-100 rounded-xl border border-slate-300 focus:outline-none">
+          </div>
+        </div>
+        <div class="pt-2 text-right">
+          <button onclick="saveSettings()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white rounded-xl shadow-lg transition">Save Settings</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="tabContent-records" class="tab-pane hidden space-y-6">
+      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 class="text-xl font-bold text-white border-b border-slate-700 pb-2">Winning & Claim History</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-700 text-slate-200 uppercase text-xs">
+              <tr>
+                <th class="p-3">User Name</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Phone</th>
+                <th class="p-3">Prize Won</th>
+                <th class="p-3">Date / Time</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTableBody" class="divide-y divide-slate-700"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    let adminToken = '';
+    let giftsData = [];
+    let fieldsData = [];
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      adminToken = document.getElementById('adminPasswordInput').value;
+      fetchAdminData();
+    }
+
+    function switchTab(tabKey) {
+      ['dashboard', 'config', 'records'].forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        const pane = document.getElementById(`tabContent-${t}`);
+        if (t === tabKey) {
+          btn.className = "px-4 py-2 font-bold text-sm rounded-lg transition bg-indigo-600 text-white";
+          pane.classList.remove('hidden');
+        } else {
+          btn.className = "px-4 py-2 font-bold text-sm rounded-lg transition text-slate-400 hover:text-white";
+          pane.classList.add('hidden');
+        }
+      });
+    }
+
+    async function fetchAdminData() {
+      try {
+        const res = await fetch('/api/admin', { headers: { 'x-admin-auth': adminToken } });
+        if (!res.ok) throw new Error('Unauthorized');
+
+        const data = await res.json();
+        if (data && data.success) {
+          document.getElementById('authModal').classList.add('hidden');
+          document.getElementById('adminMainContent').classList.remove('hidden');
+
+          giftsData = data.gifts || [];
+          fieldsData = data.form_fields || [];
+
+          renderDashboardStats(data);
+          renderPrizes();
+          renderFormFields();
+          renderSettings(data.settings || []);
+          renderRecords(data.claims || []);
+        }
+      } catch (err) {
+        document.getElementById('authErrorMsg').classList.remove('hidden');
+      }
+    }
+
+    function renderDashboardStats(data) {
+      document.getElementById('statTotalPrizes').innerText = data.gifts?.length || 0;
+      document.getElementById('statTotalClaims').innerText = data.claims?.length || 0;
+      const limitSetting = data.settings?.find(s => s.key === 'spins_per_day');
+      if (limitSetting) document.getElementById('statSpinsPerDay').innerText = limitSetting.value;
+    }
+
+    function renderPrizes() {
+      const tbody = document.getElementById('prizesTableBody');
+      if (giftsData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">No prizes defined. Click "+ Add New Prize" to create one.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = giftsData.map((item, idx) => `
+        <tr class="hover:bg-slate-750">
+          <td class="p-3">
+            <input type="text" value="${item.name || item.label || ''}" onchange="giftsData[${idx}].label = this.value"
+              class="w-full px-3 py-1.5 text-slate-900 font-bold bg-slate-100 rounded border border-slate-300 focus:outline-none">
+          </td>
+          <td class="p-3">
+            <input type="number" value="${item.probability ?? item.weight ?? 10}" onchange="giftsData[${idx}].weight = Number(this.value)"
+              class="w-24 px-3 py-1.5 text-slate-900 font-bold bg-slate-100 rounded border border-slate-300 focus:outline-none">
+          </td>
+          <td class="p-3">
+            <input type="number" value="${item.stock ?? 100}" onchange="giftsData[${idx}].stock = Number(this.value)"
+              class="w-24 px-3 py-1.5 text-slate-900 font-bold bg-slate-100 rounded border border-slate-300 focus:outline-none">
+          </td>
+          <td class="p-3">
+            <input type="color" value="${item.color || '#3b82f6'}" onchange="giftsData[${idx}].color = this.value"
+              class="h-9 w-14 rounded cursor-pointer border border-slate-300">
+          </td>
+          <td class="p-3 text-right">
+            <button onclick="deletePrizeRow(${idx})" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-lg transition">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function addPrizeRow() {
+      giftsData.push({ label: 'New Prize', weight: 10, stock: 50, color: '#3b82f6' });
+      renderPrizes();
+    }
+
+    function deletePrizeRow(idx) {
+      giftsData.splice(idx, 1);
+      renderPrizes();
+    }
+
+    async function savePrizes() {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-auth': adminToken },
+        body: JSON.stringify({ action: 'save_prizes', gifts: giftsData })
+      });
+      if (res.ok) alert('Prizes saved successfully!');
+      else alert('Failed to save prizes.');
+    }
+
+    function renderFormFields() {
+      const container = document.getElementById('formFieldsContainer');
+      if (fieldsData.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-sm">No fields defined. Click "+ Add New Field" to add one.</p>';
+        return;
+      }
+
+      container.innerHTML = fieldsData.map((field, idx) => `
+        <div class="flex items-center gap-3 bg-slate-750 p-3 rounded-xl border border-slate-700">
+          <div class="flex-1">
+            <label class="block text-xs text-slate-400 mb-1">Field Label</label>
+            <input type="text" value="${field.field_label || ''}" onchange="fieldsData[${idx}].field_label = this.value"
+              class="w-full px-3 py-1.5 text-slate-900 font-bold bg-slate-100 rounded border border-slate-300 focus:outline-none">
+          </div>
+          <div class="w-36">
+            <label class="block text-xs text-slate-400 mb-1">Type</label>
+            <select onchange="fieldsData[${idx}].field_type = this.value"
+              class="w-full px-3 py-1.5 text-slate-900 font-bold bg-slate-100 rounded border border-slate-300 focus:outline-none">
+              <option value="text" ${field.field_type === 'text' ? 'selected' : ''}>Text</option>
+              <option value="email" ${field.field_type === 'email' ? 'selected' : ''}>Email</option>
+              <option value="tel" ${field.field_type === 'tel' ? 'selected' : ''}>Phone</option>
+              <option value="number" ${field.field_type === 'number' ? 'selected' : ''}>Number</option>
+            </select>
+          </div>
+          <button onclick="deleteFormFieldRow(${idx})" class="mt-5 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-lg transition">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    function addFormFieldRow() {
+      fieldsData.push({ field_label: 'Custom Field', field_type: 'text', field_name: `field_${Date.now()}` });
+      renderFormFields();
+    }
+
+    function deleteFormFieldRow(idx) {
+      fieldsData.splice(idx, 1);
+      renderFormFields();
+    }
+
+    async function saveFormFields() {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-auth': adminToken },
+        body: JSON.stringify({ action: 'save_fields', form_fields: fieldsData })
+      });
+      if (res.ok) alert('Form fields saved successfully!');
+      else alert('Failed to save form fields.');
+    }
+
+    function renderSettings(settings) {
+      const limit = settings.find(s => s.key === 'spins_per_day');
+      const speed = settings.find(s => s.key === 'spin_speed');
+      if (limit) document.getElementById('settingSpinsPerDay').value = limit.value;
+      if (speed) document.getElementById('settingSpinSpeed').value = speed.value;
+    }
+
+    async function saveSettings() {
+      const spinsPerDay = document.getElementById('settingSpinsPerDay').value;
+      const spinSpeed = document.getElementById('settingSpinSpeed').value;
+
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-auth': adminToken },
+        body: JSON.stringify({
+          action: 'save_settings',
+          settings: [
+            { key: 'spins_per_day', value: spinsPerDay },
+            { key: 'spin_speed', value: spinSpeed }
+          ]
+        })
+      });
+      if (res.ok) alert('Settings saved successfully!');
+      else alert('Failed to save settings.');
+    }
+
+    function renderRecords(claims) {
+      const tbody = document.getElementById('recordsTableBody');
+      if (!claims || claims.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">No winning records found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = claims.map(c => `
+        <tr class="hover:bg-slate-750">
+          <td class="p-3 font-semibold text-white">${c.user_name || c.name || 'N/A'}</td>
+          <td class="p-3">${c.user_email || c.email || 'N/A'}</td>
+          <td class="p-3">${c.user_phone || c.phone || 'N/A'}</td>
+          <td class="p-3 font-bold text-amber-400">${c.gift_label || c.prize_name || 'Prize'}</td>
+          <td class="p-3 text-slate-400">${c.created_at ? new Date(c.created_at).toLocaleString() : '-'}</td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
