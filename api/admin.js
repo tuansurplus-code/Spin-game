@@ -33,28 +33,41 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const body = req.body;
+      const body = req.body || {};
+      let { action, table, data, id, form_fields, gifts, settings } = body;
 
-      // Handle bulk array saves (e.g., saving all form fields or gifts at once)
-      if (body.table && Array.isArray(body.data)) {
-        const { table, data } = body;
-        // Clear existing and re-insert or upsert
-        await supabase.from(table).delete().neq('id', 0); // clear table
-        if (data.length > 0) {
-          const { error } = await supabase.from(table).insert(data);
-          if (error) return res.status(400).json({ success: false, error: error.message });
+      // Automatically map incoming frontend payload structures if 'table' is omitted
+      if (!table) {
+        if (action === 'save_fields' || form_fields) {
+          table = 'form_fields';
+          data = form_fields;
+          action = 'save_bulk';
+        } else if (action === 'save_prizes' || gifts) {
+          table = 'gifts';
+          data = gifts;
+          action = 'save_bulk';
+        } else if (action === 'save_settings' || settings) {
+          table = 'settings';
+          data = settings;
+          action = 'save_bulk';
         }
-        return res.status(200).json({ success: true });
       }
 
-      // Handle single action object format
-      const { action, table, data, id } = body;
       if (!table) {
-        return res.status(400).json({ success: false, error: 'Target table not specified.' });
+        return res.status(400).json({ success: false, error: 'Target table not specified in request payload.' });
       }
 
       let result;
-      if (action === 'insert') {
+
+      if (action === 'save_bulk' || Array.isArray(data)) {
+        await supabase.from(table).delete().neq('id', 0);
+        if (Array.isArray(data) && data.length > 0) {
+          const cleanData = data.map(({ id, ...rest }) => rest);
+          result = await supabase.from(table).insert(cleanData);
+        } else {
+          result = { error: null };
+        }
+      } else if (action === 'insert') {
         result = await supabase.from(table).insert([data]).select();
       } else if (action === 'update') {
         result = await supabase.from(table).update(data).eq('id', id).select();
@@ -64,11 +77,11 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Invalid action specified.' });
       }
 
-      if (result.error) {
+      if (result && result.error) {
         return res.status(400).json({ success: false, error: result.error.message });
       }
 
-      return res.status(200).json({ success: true, data: result.data });
+      return res.status(200).json({ success: true, data: result?.data || [] });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
