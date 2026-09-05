@@ -1,57 +1,68 @@
-import { createClient } from '@supabase/supabase-js';
+module.exports = async function handler(req, res) {
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { gift_id, user_name, user_email, user_phone, user_address } = req.body;
-
-  if (!gift_id || !user_name || !user_email) {
-    return res.status(400).json({ error: 'Missing required user details or gift ID' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    const { data: gift, error: fetchError } = await supabase
-      .from('gifts')
-      .select('*')
-      .eq('id', gift_id)
-      .single();
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch (e) { body = {}; }
+    }
 
-    if (fetchError || !gift) throw new Error('Gift not found');
-    if (gift.stock <= 0) throw new Error('Item is out of stock');
+    const { gift_id, user_name, user_email, user_phone, gift_label } = body || {};
 
-    const { error: winnerError } = await supabase
-      .from('winners')
-      .insert([{
-        gift_id: gift.id,
-        gift_label: gift.label,
-        user_name,
-        user_email,
-        user_phone: user_phone || '',
-        user_address: user_address || '',
+    if (!gift_id || !user_name || !user_email) {
+      return res.status(400).json({ success: false, error: 'Missing required user or gift details.' });
+    }
+
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const headers = {
+      'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+
+    const giftRes = await fetch(`${SUPABASE_URL}/rest/v1/gifts?id=eq.${gift_id}&select=*`, { headers });
+    const giftData = await giftRes.json();
+    const gift = Array.isArray(giftData) ? giftData[0] : null;
+
+    if (!gift || gift.stock <= 0) {
+      return res.status(400).json({ success: false, error: 'Item is out of stock.' });
+    }
+
+    const resolvedLabel = gift_label || gift.name || gift.title || 'Prize';
+
+    const winRes = await fetch(`${SUPABASE_URL}/rest/v1/winners`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ 
+        gift_id: gift_id, 
+        gift_label: resolvedLabel,
+        user_name: user_name, 
+        user_email: user_email, 
+        user_phone: user_phone,
         status: 'Claimed'
-      }]);
-
-    if (winnerError) throw winnerError;
-
-    const { error: updateError } = await supabase
-      .from('gifts')
-      .update({ stock: gift.stock - 1 })
-      .eq('id', gift.id);
-
-    if (updateError) throw updateError;
-
-    return res.status(200).json({
-      success: true,
-      message: 'Prize claimed successfully!'
+      })
     });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+
+    if (!winRes.ok) {
+      const errData = await winRes.json();
+      return res.status(500).json({ success: false, error: JSON.stringify(errData) });
+    }
+
+    await fetch(`${SUPABASE_URL}/rest/v1/gifts?id=eq.${gift_id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ stock: gift.stock - 1 })
+    });
+
+    return res.status(200).json({ success: true, message: 'Claim submitted successfully!' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
   }
-}
+};
